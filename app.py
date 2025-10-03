@@ -82,21 +82,21 @@ def pr_curve_fig(y_true, y_prob):
 
 # ---------- DATA SOURCE (upload OR default path) ----------
 st.sidebar.header("Data")
+
+DEFAULT_CSV_PATH = "sample_hr_data.csv"  # file you just added to the repo
+
 uploaded = st.sidebar.file_uploader("Upload HR CSV", type=["csv"])
 if uploaded is not None:
-    df_raw = load_csv_from_bytes(uploaded.getvalue())
+    df_raw = pd.read_csv(uploaded)
     st.sidebar.success("Using uploaded file.")
 else:
-    df_raw = load_csv_from_path(DEFAULT_CSV_PATH)
-    st.sidebar.info("Using default CSV path.")
+    try:
+        df_raw = pd.read_csv(DEFAULT_CSV_PATH)
+        st.sidebar.info(f"Using default CSV: {DEFAULT_CSV_PATH}")
+    except FileNotFoundError:
+        st.error("No CSV available. Upload an HR CSV or add a sample CSV to the repo.")
+        st.stop()
 
-df = normalize_hr_columns(df_raw)
-
-required = ["left","satisfaction_level","last_evaluation","number_project","average_montly_hours","time_spend_company"]
-missing = [c for c in required if c not in df.columns]
-if missing:
-    st.error(f"Missing required columns in CSV: {missing}")
-    st.stop()
 
 # ---------- SIDEBAR FILTERS ----------
 dept_col  = "department" if "department" in df.columns else None
