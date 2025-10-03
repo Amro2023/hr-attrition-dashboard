@@ -29,14 +29,11 @@ def pick_col(df, options):
     return None
 
 @st.cache_data(show_spinner=False)
-def load_csv_from_bytes(file_bytes: bytes) -> pd.DataFrame:
-    return pd.read_csv(io.BytesIO(file_bytes))
-
-@st.cache_data(show_spinner=False)
 def load_csv_from_path(path: str) -> pd.DataFrame:
     return pd.read_csv(path)
 
 def normalize_hr_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Standardize expected HR column names if variants are present."""
     df = df.copy()
     df.columns = [c.strip() for c in df.columns]
     mapping = {
@@ -201,14 +198,21 @@ rf_depth  = None if rf_depth == 0 else rf_depth
 lr_c      = st.sidebar.slider("LR: C", 0.01, 5.0, 1.0)
 
 target = "left"
-y = filtered[target]
-if y.nunique() < 2:
-    st.warning("Filtered data has only one class (all stay or all leave). Loosen filters to train a model.")
-    st.stop()
+y = filtered[target].astype(int)  # ensure int labels
+X = filtered.drop(columns=[target])
 
-num_cols = filtered.select_dtypes(include=[np.number]).columns.tolist()
-num_cols = [c for c in num_cols if c != target]
-cat_cols = [c for c in filtered.columns if c not in num_cols + [target]]
+# Helpful context for the user
+class_counts = y.value_counts().to_dict()
+st.caption(f"Class counts after filtering → Stay(0): {class_counts.get(0,0)}, Leave(1): {class_counts.get(1,0)}")
+
+# Identify feature types
+num_cols = X.select_dtypes(include=[np.number]).columns.tolist()
+cat_cols = [c for c in X.columns if c not in num_cols]
+
+# Guardrail for very small filtered sets
+if len(filtered) < 30 or min(class_counts.get(0,0), class_counts.get(1,0)) < 5:
+    st.info("Tip: Very few examples in at least one class after filtering. "
+            "Metrics may be unstable; consider loosening filters or using more data.")
 
 preprocess = ColumnTransformer(
     transformers=[
@@ -218,14 +222,33 @@ preprocess = ColumnTransformer(
     remainder="drop"
 )
 
-clf = RandomForestClassifier(n_estimators=rf_n, max_depth=rf_depth, random_state=42, n_jobs=-1, class_weight="balanced") \
-      if clf_choice == "Random Forest" else \
-      LogisticRegression(C=lr_c, max_iter=2000, solver="liblinear", class_weight="balanced")
+clf = (
+    RandomForestClassifier(
+        n_estimators=rf_n, max_depth=rf_depth, random_state=42,
+        n_jobs=-1, class_weight="balanced"
+    )
+    if clf_choice == "Random Forest" else
+    LogisticRegression(
+        C=lr_c, max_iter=2000, solver="liblinear", class_weight="balanced"
+    )
+)
 
 pipe = Pipeline(steps=[("prep", preprocess), ("clf", clf)])
 
-X = filtered.drop(columns=[target])
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, stratify=y, random_state=42)
+# Try stratified split; if not possible, fall back to non-stratified
+try:
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=test_size, stratify=y, random_state=42
+    )
+except ValueError as err:
+    st.warning(
+        "Stratified split not possible (class imbalance after filters). "
+        "Falling back to a non-stratified split. "
+        f"Details: {err}"
+    )
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=test_size, stratify=None, random_state=42
+    )
 
 pipe.fit(X_train, y_train)
 y_prob = pipe.predict_proba(X_test)[:,1]
@@ -249,15 +272,17 @@ try:
     ohe = pipe.named_steps["prep"].named_transformers_["cat"]
     cat_names = ohe.get_feature_names_out(cat_cols) if cat_cols else []
     feat_names = list(num_cols) + list(cat_names)
-    if clf_choice == "Random Forest":
+    if hasattr(pipe.named_steps["clf"], "feature_importances_"):
         importances = pipe.named_steps["clf"].feature_importances_
         fi = pd.DataFrame({"Feature": feat_names, "Importance": importances}).sort_values("Importance", ascending=False)
         st.plotly_chart(px.bar(fi.head(20), x="Importance", y="Feature", orientation="h", title="Top Features"), use_container_width=True)
-    else:
+    elif hasattr(pipe.named_steps["clf"], "coef_"):
         coefs = pipe.named_steps["clf"].coef_.ravel()
         fi = pd.DataFrame({"Feature": feat_names, "Coefficient": coefs}).sort_values("Coefficient", ascending=False)
         st.plotly_chart(px.bar(fi.head(20), x="Coefficient", y="Feature", orientation="h", title="Top Positive Coefficients"), use_container_width=True)
         st.plotly_chart(px.bar(fi.tail(20), x="Coefficient", y="Feature", orientation="h", title="Top Negative Coefficients"), use_container_width=True)
+    else:
+        st.info("Explainability not available for this estimator.")
 except Exception as e:
     st.info(f"Explainability note: {e}")
 
