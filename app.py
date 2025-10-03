@@ -1,4 +1,3 @@
-import os
 import io
 import numpy as np
 import pandas as pd
@@ -19,13 +18,13 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 
 # ---------- CONFIG ----------
-DEFAULT_CSV_PATH = "/Users/amroosman/Downloads/hr_data.csv"  # fallback if no upload
 st.set_page_config(page_title="HR Analytics + Attrition Risk", layout="wide")
+DEFAULT_CSV_PATH = "sample_hr_data.csv"   # repo-relative fallback for Streamlit Cloud
 
 # ---------- HELPERS ----------
 def pick_col(df, options):
     for c in options:
-        if c in df.columns:
+        if c and c in df.columns:
             return c
     return None
 
@@ -82,21 +81,29 @@ def pr_curve_fig(y_true, y_prob):
 
 # ---------- DATA SOURCE (upload OR default path) ----------
 st.sidebar.header("Data")
-
-DEFAULT_CSV_PATH = "sample_hr_data.csv"  # file you just added to the repo
-
 uploaded = st.sidebar.file_uploader("Upload HR CSV", type=["csv"])
+
 if uploaded is not None:
     df_raw = pd.read_csv(uploaded)
     st.sidebar.success("Using uploaded file.")
 else:
     try:
-        df_raw = pd.read_csv(DEFAULT_CSV_PATH)
+        df_raw = load_csv_from_path(DEFAULT_CSV_PATH)
         st.sidebar.info(f"Using default CSV: {DEFAULT_CSV_PATH}")
     except FileNotFoundError:
         st.error("No CSV available. Upload an HR CSV or add a sample CSV to the repo.")
         st.stop()
 
+# Normalize expected columns -> THIS CREATES `df`
+df = normalize_hr_columns(df_raw)
+
+# Validate required columns before any df.columns access
+required = ["left","satisfaction_level","last_evaluation","number_project",
+            "average_montly_hours","time_spend_company"]
+missing = [c for c in required if c not in df.columns]
+if missing:
+    st.error(f"Missing required columns in CSV: {missing}")
+    st.stop()
 
 # ---------- SIDEBAR FILTERS ----------
 dept_col  = "department" if "department" in df.columns else None
@@ -126,7 +133,7 @@ ten_range = st.sidebar.slider("Tenure (years)", ten_min, ten_max, (ten_min, ten_
 promo_filter = st.sidebar.multiselect("Promotion (last 5y)", [0,1], default=[0,1]) if promo_col else [0,1]
 acc_filter   = st.sidebar.multiselect("Work accident", [0,1], default=[0,1]) if acc_col else [0,1]
 
-# apply filters
+# Apply filters
 filtered = df.copy()
 if dept_col and sel_dept != "All":
     filtered = filtered[filtered[dept_col] == sel_dept]
