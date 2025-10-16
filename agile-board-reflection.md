@@ -38,12 +38,11 @@ Overall, agile practices such as incremental delivery, sprint retrospectives, an
 ⸻
 
 3. Visual Evidence of Execution
+<img width="1440" height="900" alt="Screenshot 2025-10-16 at 6 29 42 PM" src="https://github.com/user-attachments/assets/da0c4e19-49c9-4dca-86c6-bbb671223ef3" />
+<img width="1440" height="900" alt="Screenshot 2025-10-16 at 6 32 19 PM" src="https://github.com/user-attachments/assets/2da9c422-699c-460d-9ca2-aad09ddde7c2" />
 
-(Insert screenshots here once you export them from GitHub Projects.)
-Recommended images:
-	1.	Full Scrum Board View – showing “To Do | In Progress | Done.”
-	2.	Epic View – HR Retention Analysis – highlighting decomposed tasks.
-	3.	Iteration Summary – capturing Sprint 1–4 progress and milestones.
+<img width="1440" height="900" alt="Screenshot 2025-10-16 at 6 33 44 PM" src="https://github.com/user-attachments/assets/8dd36b97-8cab-49f1-b14b-d811a7961b2e" />
+
 
 ⸻
 
