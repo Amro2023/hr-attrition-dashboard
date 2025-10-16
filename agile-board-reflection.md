@@ -57,4 +57,4 @@ Recommended images:
 | **All Members**             | Documentation, client workshops, go-live training             | Phase 4 – Training & Enablement             |
 5. Linked Deliverable
 	•	✅ Live HR Attrition Dashboard: https://hr-attrition-dashboard6520.streamlit.app
-Demonstrates final predictive and visualization capabilities integrated with SAP HR data flows.
+Demonstrates MVP predictive and visualization capabilities integrated with SAP HR data flows.
