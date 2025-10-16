@@ -1,3 +1,4 @@
+📋 **Project Board:** [View Agile Board](https://github.com/users/Amro2023/projects/1)
 Agile Project Reflection: Data Analytics for HR Retention at Alpha Manufacturing Solutions
 
 1. Rationale for Decomposition Choices
